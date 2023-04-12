@@ -24,7 +24,7 @@ CLASSES =  [
     "Pedestrian"            ,
     "Bike"                  ,
     # # # Newly added
-    "Tree Trunk"            ,
+    "TreeTrunk"            ,
     "Pole"                  ,
     "Sign"                  ,
     "Chair"                 ,
@@ -166,7 +166,7 @@ def get_grounding_output(model, image, caption, box_threshold, text_threshold, w
 def load_image(img_np):
     # load image
     image_pil = Image.fromarray(img_np)  # load image
-
+    
     transform = T.Compose(
         [
             T.RandomResize([800], max_size=1333),
@@ -178,7 +178,7 @@ def load_image(img_np):
     return image_pil, image
 
 def main(
-    root_dir: str = '/robodata/arthurz/Benchmarks/unsupda/ST3D/data/coda',
+    root_dir: str = '/robodata/arthurz/Benchmarks/mmlab/mmdetection3d/data/coda/kitti_format_2d', #'/robodata/arthurz/Benchmarks/mmlab/mmdetection3d/data/coda/kitti_format_2d',
     text_prompt: str =  "Car, Pedestrian, Bike, Motorcycle, Golf Cart, Truck, Scooter, Tree Trunk, Traffic Sign, Canopy, Traffic Light, Bike Rack, Bollard, Construction Barrier, Parking Kiosk, Mailbox, Fire Hydrant, Freestanding Plant, Pole, Informational Sign, Door, Fence, Railing, Cone, Chair, Bench, Table, Trash Can, Newspaper Dispenser, Room Label, Stanchion, Sanitizer Dispenser, Condiment Dispenser, Vending Machine, Emergency Aid Kit, Fire Extinguisher, Computer, Television, Other, Horse, Pickup Truck, Delivery Truck, Service Vehicle, Utility Vehicle, Fire Alarm, ATM, Cart, Couch, Traffic Arm, Wall Sign, Floor Sign, Door Switch, Emergency Phone, Dumpster, Vacuum Cleaner.",
     box_threshold: float = 0.3, 
     text_threshold: float = 0.20,
@@ -193,39 +193,61 @@ def main(
 ):
     global CLASSES
     CLASSES = [objcls.lower() for objcls in CLASSES]
-    # model = Model(model_config_path=config_path, model_checkpoint_path=weights_path)
+    model = Model(model_config_path=config_path, model_checkpoint_path=weights_path)
     # load_model(config_path, weights_path)
 
     root_path = Path(root_dir)
     training_data = CODataset(CLASSES, root_path, 'training')
     train_dataloader = DataLoader(training_data, batch_size=1, shuffle=True, collate_fn=training_data.collate_fn, pin_memory=True)
     
+    # TODO check how resizing affects bbox annotation corners/dimensions
     # Load GT dataset to fiftyone
-    for _, _, sample_img_file, gt_label, gt_bbox in tqdm(train_dataloader):
-        import pdb; pdb.set_trace()
-        sample = fo.Sample(filepath=sample_img_file[0])
-        detections = []
+    # samples = []
+    # for _, _, sample_img_file, gt_label, gt_bbox in tqdm(train_dataloader):
+    #     sample = fo.Sample(filepath=sample_img_file[0])
+    #     detections = []
         
-        for obj_idx, obj_label in enumerate(gt_label):
-            objlabel_id = CLASSES.index(obj_label.lower())
+    #     for obj_idx, obj_label in enumerate(gt_label[0]):
+    #         if obj_label.lower()=='dontcare':
+    #             continue
+    #         objlabel_id = obj_label.lower()
+    #         objbbox = gt_bbox[0][obj_idx]
 
-            # Bounding box coordinates should be relative values
-            # in [0, 1] in the following format:
-            # [top-left-x, top-left-y, width, height]
-            import pdb; pdb.set_trace()
-            h, w = gt_bbox[2] - gt_bbox[0], gt_bbox[3] - gt_bbox[1]
-            bounding_box = [gt_bbox[0], gt_bbox[1], w, h]
+    #         # Bounding box coordinates should be relative values
+    #         # in [0, 1] in the following format:
+    #         # [top-left-x, top-left-y, width, height]
+    #         # import pdb; pdb.set_trace()
+    #         # coco uses x along horizontal, y along vertical
+    #         h, w = objbbox[2] - objbbox[0], objbbox[3] - objbbox[1]
+    #         bounding_box = [objbbox[1], objbbox[0], w, h]
 
-            detections.append(
-                fo.Detection(label=objlabel_id, bounding_box=bounding_box)
-            )
+    #         detections.append(
+    #             fo.Detection(label=objlabel_id, bounding_box=bounding_box)
+    #         )
 
-        # Store detections in a field name of your choice
-        sample["ground_truth"] = fo.Detections(detections=detections)
+    #     # Store detections in a field name of your choice
+    #     sample["ground_truth"] = fo.Detections(detections=detections)
+    #     samples.append(sample)
+    # dataset = fo.Dataset('coda')
+    # dataset.add_samples(samples)
+    # dataset.export(
+    #     export_dir="./data/coco",
+    #     dataset_type=fo.types.COCODetectionDataset,
+    #     label_field="ground_truth",
+    #     classes=CLASSES,
+    # )
 
-        samples.append(sample)
-
-        import pdb; pdb.set_trace()
+    dataset = fo.Dataset.from_dir(
+        dataset_dir="./data/coco",
+        dataset_type=fo.types.COCODetectionDataset,
+        label_field="ground_truth",
+    )
+    
+    session = fo.launch_app(dataset)
+    classes = dataset.default_classes
+    import pdb; pdb.set_trace()
+    predictions_view = dataset
+    samples = []
 
     for sample_idx, sample_img, sample_img_file, gt_label, gt_bbox in tqdm(train_dataloader):
         # image_pil, image = load_image(sample_img[0].astype(dtype=np.uint8))
@@ -235,7 +257,7 @@ def main(
         # )
         # import pdb; pdb.set_trace()
         detections_all = None
-        for objid, objcls in enumerate(CLASSES):
+        for objid, objcls in enumerate(classes):
             detections = model.predict_with_classes(
                 image=sample_img[0].astype(dtype=np.uint8),
                 classes=[objcls],
@@ -260,24 +282,41 @@ def main(
                     import pdb; pdb.set_trace()
                     print("next")
 
-        
         detections_all.class_id = detections_all.class_id.astype(np.uint8)
-        box_annotator = sv.BoxAnnotator()
-        # import pdb; pdb.set_trace()
-        annotated_image = box_annotator.annotate(scene=sample_img[0].astype(dtype=np.uint8), detections=detections_all)
-        # import pdb; pdb.set_trace()
-        # # visualize pred
-        # size = image_pil.size
-        # pred_dict = {
-        #     "boxes": boxes_filt,
-        #     "size": [size[1], size[0]],  # H,W
-        #     "labels": pred_phrases,
-        # }
-        # image_with_box = plot_boxes_to_image(image_pil, pred_dict)[0]
-        annotated_pil_img = Image.fromarray(annotated_image, "RGB")
-        annotated_pil_img.save(os.path.join(output_dir, "pred.jpg"))
 
+        pred_labels = np.array(classes)[detections_all.class_id]
+        predh = detections_all.xyxy[:, 2] - detections_all.xyxy[:, 0]
+        predw = detections_all.xyxy[:, 3] - detections_all.xyxy[:, 1]
+        predx, predy = detections_all.xyxy[:, 1], detections_all.xyxy[:, 0]
+        pred_bbox = np.stack((predx, predy, predw, predh), axis=-1)
 
+        import pdb; pdb.set_trace()
+        sample = fo.Sample(filepath=str(sample_img_file[0]))
+        detections = []
+        for pred_idx in range(len(pred_labels)):
+            detections.append(
+                fo.Detection(label=pred_labels[pred_idx], bounding_box=pred_bbox[pred_idx])
+            )
+        sample['predictions'] = fo.Detections(detections=detections)
+        sample.save()
+        # samples.append(sample)
+        # Uncomment below to save individual images for debugging
+        # box_annotator = sv.BoxAnnotator()
+        # annotated_image = box_annotator.annotate(scene=sample_img[0].astype(dtype=np.uint8), detections=detections_all)
+        # annotated_pil_img = Image.fromarray(annotated_image, "RGB")
+        # annotated_pil_img.save(os.path.join(output_dir, "pred.jpg"))
+        # import pdb; pdb.set_trace()
+    # pred_dataset = fo.Dataset('coda_predictions')
+    # pred_dataset.add_samples(samples)
+    # pred_dataset.export(
+    #     export_dir="./data/coco_pred",
+    #     dataset_type=fo.types.COCODetectionDataset,
+    #     label_field="predictions",
+    #     classes=CLASSES,
+    # )
+
+    session.view = predictions_view
+    import pdb; pdb.set_trace()
 
 if __name__ == "__main__":
     main()
