@@ -159,7 +159,7 @@ if __name__ == "__main__":
     boxes_filt, pred_phrases = get_grounding_output(
         model, image, text_prompt, box_threshold, text_threshold, cpu_only=args.cpu_only
     )
-
+    import pdb; pdb.set_trace()
     # visualize pred
     size = image_pil.size
     pred_dict = {
