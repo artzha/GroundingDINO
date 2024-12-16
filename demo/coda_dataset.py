@@ -92,7 +92,7 @@ class CODataset(Dataset):
 
     def get_image(self, idx):
         img_file = self.root_split_path / 'image_0' / ('%s.jpg' % idx)
-        assert img_file.exists()
+        assert img_file.exists(), "%s" % img_file
         return np.array(io.imread(img_file), dtype=np.int32), img_file
 
     def get_lidar(self, idx):
@@ -122,8 +122,8 @@ class CODataset(Dataset):
 
     def __getitem__(self, index):
         info = copy.deepcopy(self.coda_infos[index])
+        sample_idx = "%07d" % info['image']['image_idx']
 
-        sample_idx = info['point_cloud']['lidar_idx']
         img, img_file   = self.get_image(sample_idx)
         labels = info['annos']['name']
         bbox   = info['annos']['bbox']
