@@ -1,5 +1,34 @@
 # :sauropod: Grounding DINO 
 
+# Autogenerating Bounding Box Labels
+To autogenerate bounding box labels for the brains4cars dataset, modify the default function argument for `root_dir` in the `demo/test_b4c.py:main` file. This should be set to the path for your brains4cars dataset download. We expect the following directory structure.
+
+```
+brains4cars
+├── road_camera
+│   ├── end_action
+│   │   ├── DATE_TIME_START_END.avi
+│   |   ├── DATE_TIME_START_END.txt
+│   ├── ...
+├── face_camera_processed
+│   ├── face_camera
+│   │   ├── end_action
+│   │   │   ├── DATE_TIME_START_END
+├── road_camera_processed (generated)
+│   ├── end_action
+│   │   ├── DATE_TIME_START_END
+│   │   │   ├── 0000.jpg
+│   ├── ImageSets
+├── ImageSets_face_camera (generated)
+├── ImageSets_road_camera (generated)
+
+```
+
+Run the following script to autogenerate bounding box labels for the brains4cars dataset. You should now see the generated directories populate with annotation labels.
+```bash
+python demo/test_b4c.py
+```
+
 ---
 
 

@@ -22,7 +22,7 @@ CLASSES =  [
     # Dynamic Classes
     "Car"                   ,
     "Pedestrian"            ,
-    "Bike"                  ,
+    "Cyclist"                  ,
     # # # Newly added
     "Tree Trunk"            ,
     "Pole"                  ,
@@ -178,7 +178,7 @@ def load_image(img_np):
     return image_pil, image
 
 def main(
-    root_dir: str = '/robodata/arthurz/Benchmarks/unsupda/ST3D/data/coda',
+    root_dir: str = '/robodata/arthurz/Benchmarks/unsupda/ST3D/data/coda', #'/media/arthur/ExtremePro/kitti_format/coda',
     text_prompt: str =  "Car, Pedestrian, Bike, Motorcycle, Golf Cart, Truck, Scooter, Tree Trunk, Traffic Sign, Canopy, Traffic Light, Bike Rack, Bollard, Construction Barrier, Parking Kiosk, Mailbox, Fire Hydrant, Freestanding Plant, Pole, Informational Sign, Door, Fence, Railing, Cone, Chair, Bench, Table, Trash Can, Newspaper Dispenser, Room Label, Stanchion, Sanitizer Dispenser, Condiment Dispenser, Vending Machine, Emergency Aid Kit, Fire Extinguisher, Computer, Television, Other, Horse, Pickup Truck, Delivery Truck, Service Vehicle, Utility Vehicle, Fire Alarm, ATM, Cart, Couch, Traffic Arm, Wall Sign, Floor Sign, Door Switch, Emergency Phone, Dumpster, Vacuum Cleaner.",
     box_threshold: float = 0.3, 
     text_threshold: float = 0.20,
@@ -202,11 +202,12 @@ def main(
     
     # Load GT dataset to fiftyone
     for _, _, sample_img_file, gt_label, gt_bbox in tqdm(train_dataloader):
-        import pdb; pdb.set_trace()
+        
         sample = fo.Sample(filepath=sample_img_file[0])
         detections = []
         
-        for obj_idx, obj_label in enumerate(gt_label):
+        for obj_idx, obj_label in enumerate(gt_label[0]):
+            import pdb; pdb.set_trace()
             objlabel_id = CLASSES.index(obj_label.lower())
 
             # Bounding box coordinates should be relative values
